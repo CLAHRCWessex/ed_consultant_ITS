@@ -503,6 +503,23 @@ segments(35,
 legend(x=2, y=100, legend=c("Night (intervention)","Day (control)"), col=c("blue","red"),pch=20)
 
 
+
+
+##############################################
+# Sensitivity to wild points - cookes distance > 4/n
+##############################################
+
+
+# Fit the GLS regression model
+model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
+                  group_trend + ed_summer + wild, 
+                data=data_ed,
+                correlation=corARMA(p=2,form=~time|group),
+                method="ML")
+summary(model_p2)
+confint(model_p2)
+
+
 ##############################################
 # Predict absolute and relative changes
 ##############################################
