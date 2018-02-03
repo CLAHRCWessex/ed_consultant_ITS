@@ -510,11 +510,27 @@ legend(x=2, y=100, legend=c("Night (intervention)","Day (control)"), col=c("blue
 ##############################################
 
 
-# Fit the GLS regression model
+# significant - same substantive findings
 model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
                   group_trend + ed_summer + wild, 
                 data=data_ed,
                 correlation=corARMA(p=2,form=~time|group),
+                method="ML")
+summary(model_p2)
+confint(model_p2)
+
+
+
+##############################################
+# Sensitivity to interaction between group and seasonality
+##############################################
+
+
+# not significant exclude from model. (also tried with p = 12.  same results)
+model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
+                  group_trend + ed_summer + summer_group, 
+                data=data_ed,
+                correlation=corARMA(p=2, form=~time|group),
                 method="ML")
 summary(model_p2)
 confint(model_p2)
