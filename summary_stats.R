@@ -70,3 +70,19 @@ sd(data_ed$patients_n[55:88])
 sd(data_ed$patients_n[89:108])
 
 
+#count
+
+#mean
+
+#nigh pre
+sum(data_ed$patients_n[1:34])
+#night post
+sum(data_ed$patients_n[35:54])
+
+#day pre
+sum(data_ed$patients_n[55:88])
+
+#day post
+sum(data_ed$patients_n[89:108])
+
+
