@@ -12,6 +12,17 @@
 # T.Monks
 #####################################
 
+
+####################################
+# Modelling
+# 1. Seasonality with 11 monthly dummies
+# 2  Seasonality with single dummy variable for difference between summer/rest of year
+# 3. Adjusting for wild points in Winter 2016/17
+# 4. Interaction between seasonality and group
+# 5. Adjusting for patients numbers per month
+#####################################
+
+
 ###################################
 # Dependencies
 ###################################
@@ -117,7 +128,7 @@ legend(x=1, y=100, legend=c("Night (intervention)","Day (control)"),
 # Model 1: Simple OLS with seasonal dummies
 ########################
 
-#check for unit root - all okay ADF(4) = -4.6 p < 0.01
+#check for unit root - all okay ADF(4) = -4.6 p < 0.01 (sig indicates stationarity)
 adf.test(data_ed$mean_total_time)
 
 
@@ -286,6 +297,7 @@ legend(x=40, y=430, legend=c("Night Worked","On Call"), col=c("blue","red"),pch=
 # A preliminary OLS regression
 model_ols<-lm(mean_total_time ~ time + group + group_time + level + trend + group_level + 
                 group_trend + ed_summer, data=data_ed)
+
 summary(model_ols)
 confint(model_ols)
 
@@ -298,7 +310,7 @@ cooks.distance(model_ols)
 
 # Durbin-watson test to 12 lags
 dwt(model_ols,max.lag=12,alternative="two.sided")
-pac#suggestive of a prblem at lag 12
+#pac suggestive of a prblem at lag 12
 
 # Graph the residuals from the OLS regression to check for serially correlated errors
 plot(data_ed$time[1:54],
@@ -315,9 +327,10 @@ abline(h=0,lty=2)
 par(mfrow=c(1,2))
 
 # Produce Plots
-acf(residuals(model_ols), lag.max = 12)
-acf(residuals(model_ols),type='partial', lag.max = 12)
-# Note decay in ACF, significant spike at 10 in PACF, model p=10
+acf(residuals(model_ols), lag.max = 25)
+acf(residuals(model_ols),type='partial', lag.max = 25)
+# Note decay in ACF, significant spike at 2 in PACF, initial model p=2
+# Also a significant spike at 16 in PACF. Test in sensitivity analysis. 
 
 ########################
 # Run the final model
@@ -329,9 +342,14 @@ model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + gr
                  data=data_ed,
                  correlation=corARMA(p=2,form=~time|group),
                  method="ML")
+
 summary(model_p2)
 confint(model_p2)
 
+vif(model_p2)
+
+acf(residuals(model_p2), lag.max = 25)
+acf(residuals(model_p2),type='partial', lag.max = 25)
 
 outlierTest(model_ols) # Bonferonni p-value for most extreme obs
 cutoff <- 4/((nrow(data_ed)-length(model_p2$coefficients)-2)) 
@@ -343,8 +361,6 @@ influencePlot(model_ols,	id.method="identify", main="Influence Plot", sub="Circl
 ########################
 # Sensitivity
 ########################
-#ACF arguably decays to zero.  MA(1) to be tested for sensitivity.
-#PACF spikes at 2. Durbin-Watson suggestive of lag 12.
 
 # Likelihood-ratio tests
 model_p2q1 <- update(model_p2,correlation=corARMA(p=2,q=1,form=~time|group))
@@ -357,10 +373,25 @@ anova(model_p12,model_p2)
 summary(model_p12)
 #non-significant.  Substantive conclusions the same.
 
+model_p16 <- update(model_p2,correlation=corARMA(p=16, form=~time|group))
+anova(model_p16,model_p2)
+summary(model_p16)
+confint(model_p16)
+#p = 16 has lower AIC - significant.  Substantive conclusions the same.
+#notes: p = 16 has smaller standard errors for interaction terms. 
+
+
 model_p12q1 <- update(model_p2,correlation=corARMA(p=12, q = 1, form=~time|group))
 anova(model_p12q1,model_p2)
 summary(model_p12q1)
 #non-significant.  Substantive conclusions the same.
+
+
+model_p16q1 <- update(model_p2,correlation=corARMA(p=16, q=1, form=~time|group))
+anova(model_p16q1,model_p16)
+summary(model_p16q1)
+confint(model_p16q1)
+#p = 16 has lower AIC - significant.  Substantive conclusions the same.
 
 # Put plotting back to one chart
 par(mfrow=c(1,1))
@@ -371,6 +402,8 @@ summary(model_final)
 #psuedo R squared
 R2 <- cor(data_ed$mean_total_time,predict(model_final))^2
 R2
+#psuedo R^2 = 0.67 for p = 2 and 0.66 for p = 16
+
 
 # Residual plot
 qqPlot(residuals(model_final))
@@ -500,7 +533,7 @@ segments(35,
 
 
 # Add in a legend
-legend(x=2, y=100, legend=c("Night (intervention)","Day (control)"), col=c("blue","red"),pch=20)
+legend(x=2, y=100, legend=c("Night (2200-0600)","Day"), col=c("blue","red"),pch=20)
 
 
 
@@ -511,13 +544,13 @@ legend(x=2, y=100, legend=c("Night (intervention)","Day (control)"), col=c("blue
 
 
 # significant - same substantive findings
-model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
+model_p16 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
                   group_trend + ed_summer + wild, 
                 data=data_ed,
-                correlation=corARMA(p=2,form=~time|group),
+                correlation=corARMA(p=16,form=~time|group),
                 method="ML")
-summary(model_p2)
-confint(model_p2)
+summary(model_p16)
+confint(model_p16)
 
 
 
@@ -526,14 +559,29 @@ confint(model_p2)
 ##############################################
 
 
-# not significant exclude from model. (also tried with p = 12.  same results)
-model_p2 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
+model_p16 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
                   group_trend + ed_summer + summer_group, 
                 data=data_ed,
-                correlation=corARMA(p=2, form=~time|group),
+                correlation=corARMA(p=16, form=~time|group),
                 method="ML")
-summary(model_p2)
-confint(model_p2)
+summary(model_p16)
+confint(model_p16)
+#conclusions = no substantive difference in interpretatation.  Interaction term ns.
+
+
+##############################################
+# Sensitivity to number of patients per month.
+##############################################
+
+
+model_p16 <- gls(mean_total_time ~ time + group + group_time + level + trend + group_level + 
+                   group_trend + ed_summer + patients_n, 
+                 data=data_ed,
+                 correlation=corARMA(p=16, form=~time|group),
+                 method="ML")
+summary(model_p16)
+confint(model_p16)
+#conclusions = no substantive difference in interpretatation.  patients_n is ns.
 
 
 ##############################################

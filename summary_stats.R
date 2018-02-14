@@ -86,3 +86,17 @@ sum(data_ed$patients_n[55:88])
 sum(data_ed$patients_n[89:108])
 
 
+
+#variability of points per and post
+
+#night pre
+sd(data_ed$mean_total_time[1:34])
+#night post
+sd(data_ed$mean_total_time[35:54])
+
+
+#day pre
+sd(data_ed$mean_total_time[55:88])
+
+#day post
+sd(data_ed$mean_total_time[89:108])
